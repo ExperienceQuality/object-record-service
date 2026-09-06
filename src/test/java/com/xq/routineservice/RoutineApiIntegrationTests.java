@@ -16,6 +16,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.context.ApplicationContext;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -27,6 +28,7 @@ import org.testcontainers.utility.DockerImageName;
 
 @SpringBootTest
 @Testcontainers
+@ActiveProfiles("integration")
 class RoutineApiIntegrationTests {
     @Container
     @ServiceConnection
