@@ -59,6 +59,25 @@ dependencies {
 
 tasks.named('test') {
     useJUnitPlatform()
+    mustRunAfter tasks.named('clean')
+}
+
+tasks.named('bootJar') {
+    mustRunAfter tasks.named('test')
+}
+
+tasks.register('packageService') {
+    description = 'Packages the executable routine-service JAR.'
+    group = 'build'
+    dependsOn tasks.named('bootJar')
+}
+
+tasks.register('ci') {
+    description = 'Runs clean CI verification and packages the service.'
+    group = 'verification'
+    dependsOn tasks.named('clean')
+    dependsOn tasks.named('test')
+    dependsOn tasks.named('packageService')
 }
 
 tasks.register('e2eTest', Test) {

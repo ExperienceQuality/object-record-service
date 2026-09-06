@@ -14,7 +14,7 @@
 ## Acceptance commands
 
 ```shell
-./gradlew clean test
+./gradlew ci
 XQORB_BASE_URI=http://localhost:8080 ./gradlew e2e
 docker compose config
 ```

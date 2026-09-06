@@ -37,8 +37,8 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
 
-      - name: Run unit, integration, contract, and packaging checks
-        run: ./gradlew --no-daemon clean test bootJar
+      - name: Run CI verification and package service
+        run: ./gradlew --no-daemon ci
 
       - name: Start PostgreSQL 18
         run: docker compose up -d --wait

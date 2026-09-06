@@ -57,7 +57,7 @@ The OpenAPI 3.1 contract is [routine-service.yaml](src/main/resources/static/ope
 Unit and integration tests use PostgreSQL 18 through Testcontainers. E2E tests target a running service:
 
 ```shell
-./gradlew clean test
+./gradlew ci
 XQORB_BASE_URI=http://localhost:8080 ./gradlew e2e
 docker compose config
 ```
@@ -66,7 +66,7 @@ See [test coverage](docs/test-coverage.md) for the scenario matrix and known gap
 
 ## CI/CD
 
-[CI](.github/workflows/ci.yml) runs for pull requests, pushes to `main`, manual dispatches, and release workflow calls. It validates the Gradle wrapper, runs unit/integration/OpenAPI tests, builds the executable JAR, starts PostgreSQL 18 and the packaged service, then runs the E2E suite. Reports, logs, and the JAR are retained as workflow artifacts.
+[CI](.github/workflows/ci.yml) runs for pull requests, pushes to `main`, manual dispatches, and release workflow calls. It validates the Gradle wrapper, invokes the Gradle `ci` task for clean unit/integration/OpenAPI verification and `packageService` JAR creation, starts PostgreSQL 18 and the packaged service, then invokes the Gradle `e2e` task. Reports, logs, and the JAR are retained as workflow artifacts.
 
 [Release](.github/workflows/release.yml) runs for `v*` tags or manual dispatch. After the same CI gate passes, it publishes `ghcr.io/experiencequality/routine-service` with release and commit-SHA tags. Stable semantic versions also update `latest`. The workflow generates an SPDX SBOM and publishes provenance and SBOM attestations for the image.
 
