@@ -9,7 +9,7 @@
 | HTTP integration | Create and replace a complete routine aggregate; create/read immutable snapshots; snapshot survives later routine changes | `RoutineApiIntegrationTests` |
 | Identity isolation | Missing `X-User-Id` is `401`; malformed UUID is `400`; another user receives `404` | `RoutineApiIntegrationTests`, `RoutineBusinessE2ETest` |
 | Validation | Duplicate day numbers, missing identity, and malformed identity are exercised; field constraints are declared with Bean Validation | `RoutineApiIntegrationTests`, `RoutineApi` |
-| E2E business flow | Create/list/read routine; user isolation; aggregate replacement; create/list/read immutable snapshot | `src/e2e/java/test/RoutineBusinessE2ETest.java` |
+| E2E business flow | Create/list/read routine; user isolation; aggregate replacement; create/list/read immutable snapshot | `src/e2e/java/test/RoutineBusinessE2ETest.java` using JVM Test Kit v2 |
 | Runtime profiles | Production requires external datasource secrets; packaged e2e uses local fallbacks; integration tests use a separate Testcontainers-owned profile; all controlled profiles disable Docker Compose | `RenderBlueprintTests`, Spring integration tests |
 | Render deployment | Blueprint parsing, pinned private image, explicit `prod` profile, free Singapore service, health check, external Neon secrets, and absence of a Render database | `RenderBlueprintTests` via `validateDeployment` |
 
@@ -20,6 +20,10 @@
 XQORB_BASE_URI=http://localhost:8080 ./gradlew e2e
 docker compose config
 ```
+
+E2E tests use `com.xq:jvm-test-kit:2.0.0` from GitHub Packages. Local runs
+need `GITHUB_ACTOR` and `GITHUB_TOKEN` with package-read access. CI supplies
+the same access through the workflow token.
 
 ## Deliberate boundaries and gaps
 

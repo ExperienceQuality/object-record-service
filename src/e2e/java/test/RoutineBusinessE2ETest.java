@@ -1,98 +1,94 @@
 package test;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
+import com.xq.jvmtestkit.junit.Xq;
+import com.xq.jvmtestkit.junit.XqTest;
+import com.xq.jvmtestkit.rest.RestApiConfig;
+import com.xq.jvmtestkit.rest.RestRequest;
+import com.xq.jvmtestkit.rest.RestResponse;
+import java.net.URI;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-
-import lib.XQOrb;
-import lib.XQRequest;
-import lib.XQResponse;
-import lib.XQTest;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
-@XQTest
+@XqTest
 @Tag("e2e")
 class RoutineBusinessE2ETest {
-    @Test
-    void createsListsAndReadsUserRoutine(XQOrb orb) {
-        String user = UUID.randomUUID().toString();
-        Map<String, ?> headers = headers(user);
-        XQResponse created = createRoutine(orb, headers, "Bench press", 100);
-        String routineId = created.raw().jsonPath().getString("id");
-
-        orb.rest().get("/api/v1/routines", XQRequest.withHeaders(headers))
-                .shouldHaveStatus(200)
-                .shouldMatch("[{\"id\":\"%s\",\"name\":\"Strength A\"}]".formatted(routineId));
-        orb.rest().get("/api/v1/routines/" + routineId, XQRequest.withHeaders(headers))
-                .shouldHaveStatus(200)
-                .shouldMatch("""
-                        {
-                        "id":"%s",
-                        "days":[{"dayNumber":1,"name":"Push","exercises":[
-                          {"name":"Bench press","sets":5,"reps":5,"weightKg":100.00,"sortOrder":0}
-                        ]}]}
-                        """.formatted(routineId));
+    @BeforeEach
+    void configureTestKit() {
+        Xq.rest(RestApiConfig.at(URI.create(baseUri())));
     }
 
     @Test
-    void isolatesUsersAndReplacesRoutineAggregate(XQOrb orb) {
-        String user = UUID.randomUUID().toString();
-        Map<String, ?> headers = headers(user);
-        String routineId = createRoutine(orb, headers, "Squat", 120)
-                .raw().jsonPath().getString("id");
+    void createsListsAndReadsUserRoutine() {
+        Map<String, String> headers = headers(UUID.randomUUID().toString());
+        RestResponse created = createRoutine(headers, "Bench press", 100);
+        String routineId = jsonString(created.bodyUtf8(), "id");
 
-        orb.rest().get("/api/v1/routines/" + routineId,
-                        XQRequest.withHeaders(headers(UUID.randomUUID().toString())))
-                .shouldHaveStatus(404)
-                .shouldMatch("{\"code\":\"ROUTINE_NOT_FOUND\"}");
-
-        orb.rest().put("/api/v1/routines/" + routineId,
-                        XQRequest.withBodyAndHeaders(body("Incline press", 80), headers))
-                .shouldHaveStatus(200)
-                .shouldMatch("""
-                        {"id":"%s","days":[{"exercises":[
-                          {"name":"Incline press","weightKg":80.00}
-                        ]}]}
-                        """.formatted(routineId));
+        Xq.rest().get("/api/v1/routines", RestRequest.builder().headers(headers).build())
+                .should().status(200)
+                .matchJson("[{\"id\":\"%s\",\"name\":\"Strength A\"}]".formatted(routineId));
+        Xq.rest().get("/api/v1/routines/" + routineId,
+                        RestRequest.builder().headers(headers).build())
+                .should().status(200)
+                .matchJson("{\"id\":\"%s\",\"days\":[{\"dayNumber\":1,\"name\":\"Push\",\"exercises\":[{\"name\":\"Bench press\",\"sets\":5,\"reps\":5,\"weightKg\":100.00,\"sortOrder\":0}]}]}".formatted(routineId));
     }
 
     @Test
-    void snapshotRemainsStableAfterRoutineChanges(XQOrb orb) {
-        String user = UUID.randomUUID().toString();
-        Map<String, ?> headers = headers(user);
-        String routineId = createRoutine(orb, headers, "Deadlift", 150)
-                .raw().jsonPath().getString("id");
+    void isolatesUsersAndReplacesRoutineAggregate() {
+        Map<String, String> headers = headers(UUID.randomUUID().toString());
+        String routineId = jsonString(createRoutine(headers, "Squat", 120).bodyUtf8(), "id");
 
-        XQResponse snapshot = orb.rest().post("/api/v1/routines/" + routineId + "/snapshots",
-                        XQRequest.withHeaders(headers))
-                .shouldHaveStatus(201)
-                .shouldMatch("{\"exercises\":[{\"name\":\"Deadlift\",\"weightKg\":150.00}]}");
-        String snapshotId = snapshot.raw().jsonPath().getString("id");
+        Xq.rest().get("/api/v1/routines/" + routineId,
+                        RestRequest.builder().headers(headers(UUID.randomUUID().toString())).build())
+                .should().status(404).matchJson("{\"code\":\"ROUTINE_NOT_FOUND\"}");
 
-        orb.rest().put("/api/v1/routines/" + routineId,
-                        XQRequest.withBodyAndHeaders(body("Deadlift", 160), headers))
-                .shouldHaveStatus(200);
-
-        orb.rest().get("/api/v1/routines/" + routineId + "/snapshots/" + snapshotId,
-                        XQRequest.withHeaders(headers))
-                .shouldHaveStatus(200)
-                .shouldMatch("{\"exercises\":[{\"name\":\"Deadlift\",\"weightKg\":150.00}]}");
-        List<String> snapshots = orb.rest().get("/api/v1/routines/" + routineId + "/snapshots",
-                        XQRequest.withHeaders(headers))
-                .shouldHaveStatus(200).raw().jsonPath().getList("id", String.class);
-        assertThat(snapshots).containsExactly(snapshotId);
+        Xq.rest().put("/api/v1/routines/" + routineId,
+                        RestRequest.builder().headers(headers)
+                                .jsonBody(body("Incline press", 80)).build())
+                .should().status(200)
+                .matchJson("{\"id\":\"%s\",\"days\":[{\"exercises\":[{\"name\":\"Incline press\",\"weightKg\":80.00}]}]}".formatted(routineId));
     }
 
-    private XQResponse createRoutine(XQOrb orb, Map<String, ?> headers, String exercise, int weight) {
-        return orb.rest().post("/api/v1/routines", XQRequest.withBodyAndHeaders(body(exercise, weight), headers))
-                .shouldHaveStatus(201)
-                .shouldMatch("{\"name\":\"Strength A\",\"days\":[{\"dayNumber\":1}]}");
+    @Test
+    void snapshotRemainsStableAfterRoutineChanges() {
+        Map<String, String> headers = headers(UUID.randomUUID().toString());
+        String routineId = jsonString(createRoutine(headers, "Deadlift", 150).bodyUtf8(), "id");
+
+        RestResponse snapshot = Xq.rest().post("/api/v1/routines/" + routineId + "/snapshots",
+                RestRequest.builder().headers(headers).build());
+        snapshot.should().status(201)
+                .matchJson("{\"exercises\":[{\"name\":\"Deadlift\",\"weightKg\":150.00}]}" );
+        String snapshotId = jsonString(snapshot.bodyUtf8(), "id");
+
+        Xq.rest().put("/api/v1/routines/" + routineId,
+                        RestRequest.builder().headers(headers)
+                                .jsonBody(body("Deadlift", 160)).build())
+                .should().status(200);
+
+        Xq.rest().get("/api/v1/routines/" + routineId + "/snapshots/" + snapshotId,
+                        RestRequest.builder().headers(headers).build())
+                .should().status(200)
+                .matchJson("{\"exercises\":[{\"name\":\"Deadlift\",\"weightKg\":150.00}]}" );
+        Xq.rest().get("/api/v1/routines/" + routineId + "/snapshots",
+                        RestRequest.builder().headers(headers).build())
+                .should().status(200)
+                .matchJson("[{\"id\":\"%s\"}]".formatted(snapshotId));
     }
 
-    private Map<String, ?> headers(String user) { return Map.of("X-User-Id", user); }
+    private RestResponse createRoutine(Map<String, String> headers, String exercise, int weight) {
+        RestResponse response = Xq.rest().post("/api/v1/routines",
+                RestRequest.builder().headers(headers).jsonBody(body(exercise, weight)).build());
+        response.should().status(201)
+                .matchJson("{\"name\":\"Strength A\",\"days\":[{\"dayNumber\":1}]}" );
+        return response;
+    }
+
+    private Map<String, String> headers(String user) {
+        return Map.of("X-User-Id", user);
+    }
 
     private Map<String, ?> body(String exercise, int weight) {
         return Map.of(
@@ -107,5 +103,20 @@ class RoutineBusinessE2ETest {
                                 "reps", 5,
                                 "weightKg", weight,
                                 "sortOrder", 0)))));
+    }
+
+    private String baseUri() {
+        return System.getProperty("xqorb.base-uri",
+                System.getenv().getOrDefault("XQORB_BASE_URI", "http://localhost:8080"));
+    }
+
+    private String jsonString(String json, String field) {
+        String marker = "\"" + field + "\":\"";
+        int start = json.indexOf(marker);
+        if (start < 0) throw new AssertionError("Missing JSON field: " + field);
+        int valueStart = start + marker.length();
+        int valueEnd = json.indexOf('"', valueStart);
+        if (valueEnd < 0) throw new AssertionError("Unterminated JSON field: " + field);
+        return json.substring(valueStart, valueEnd);
     }
 }

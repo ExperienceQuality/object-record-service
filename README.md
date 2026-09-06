@@ -67,13 +67,16 @@ The OpenAPI 3.1 contract is [routine-service.yaml](src/main/resources/static/ope
 
 ## Verification
 
-Unit and integration tests use PostgreSQL 18 through Testcontainers. E2E tests target a running service:
+Unit and integration tests use PostgreSQL 18 through Testcontainers. E2E tests use JVM Test Kit v2 and target a running service:
 
 ```shell
 ./gradlew ci
 XQORB_BASE_URI=http://localhost:8080 ./gradlew e2e
 docker compose config
 ```
+
+JVM Test Kit v2 is resolved from GitHub Packages. Local E2E dependency
+resolution requires `GITHUB_ACTOR` and `GITHUB_TOKEN` with package-read access.
 
 See [test coverage](docs/test-coverage.md) for the scenario matrix and known gaps.
 

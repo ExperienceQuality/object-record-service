@@ -22,6 +22,14 @@ sourceSets {
 
 repositories {
     mavenCentral()
+    maven {
+        name = 'GitHubPackages'
+        url = uri('https://maven.pkg.github.com/ExperienceQuality/jvm-test-kit')
+        credentials {
+            username = providers.environmentVariable('GITHUB_ACTOR').orNull
+            password = providers.environmentVariable('GITHUB_TOKEN').orNull
+        }
+    }
 }
 
 dependencies {
@@ -45,15 +53,7 @@ dependencies {
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
     e2eImplementation 'org.junit.jupiter:junit-jupiter-api'
-    e2eImplementation 'org.assertj:assertj-core'
-    e2eImplementation 'io.rest-assured:rest-assured:5.5.6'
-    e2eImplementation 'com.fasterxml.jackson.core:jackson-databind:2.21.5'
-    e2eImplementation 'net.javacrumbs.json-unit:json-unit-assertj:4.1.0'
-    e2eImplementation 'org.json:json:20250517'
-    e2eImplementation 'org.slf4j:slf4j-api'
-    e2eImplementation 'org.apache.groovy:groovy:4.0.22'
-    e2eImplementation 'org.apache.groovy:groovy-json:4.0.22'
-    e2eImplementation 'org.apache.groovy:groovy-xml:4.0.22'
+    e2eImplementation 'com.xq:jvm-test-kit:2.0.0'
     e2eRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine'
     e2eRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
