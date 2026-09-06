@@ -29,7 +29,9 @@ class RoutineBusinessE2ETest {
         orb.rest().get("/api/v1/routines/" + routineId, XQRequest.withHeaders(headers))
                 .shouldHaveStatus(200)
                 .shouldMatch("""
-                        {"id":"%s","days":[{"dayNumber":1,"name":"Push","exercises":[
+                        {
+                        "id":"%s",
+                        "days":[{"dayNumber":1,"name":"Push","exercises":[
                           {"name":"Bench press","sets":5,"reps":5,"weightKg":100.00,"sortOrder":0}
                         ]}]}
                         """.formatted(routineId));
