@@ -1,0 +1,267 @@
+openapi: 3.1.0
+jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
+info:
+  title: Routine Service API
+  version: 1.0.0
+  description: User-scoped workout routines and immutable exercise snapshots.
+servers:
+  - url: /
+paths:
+  /api/v1/routines:
+    get:
+      operationId: listRoutines
+      summary: List routines owned by the trusted user
+      parameters: [{ $ref: '#/components/parameters/UserId' }]
+      responses:
+        '200':
+          description: User routines
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/RoutineSummary' } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      operationId: createRoutine
+      summary: Create a complete routine aggregate
+      description: The trusted user is provisioned automatically on first write.
+      parameters: [{ $ref: '#/components/parameters/UserId' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RoutineWriteRequest' }
+      responses:
+        '201':
+          description: Routine created
+          headers:
+            Location: { required: true, schema: { type: string, format: uri-reference } }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Routine' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /api/v1/routines/{routineId}:
+    parameters:
+      - $ref: '#/components/parameters/UserId'
+      - $ref: '#/components/parameters/RoutineId'
+    get:
+      operationId: getRoutine
+      summary: Read a complete routine aggregate
+      responses:
+        '200':
+          description: Routine
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Routine' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      operationId: replaceRoutine
+      summary: Replace routine days and exercises atomically
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RoutineWriteRequest' }
+      responses:
+        '200':
+          description: Replaced routine
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Routine' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /api/v1/routines/{routineId}/snapshots:
+    parameters:
+      - $ref: '#/components/parameters/UserId'
+      - $ref: '#/components/parameters/RoutineId'
+    get:
+      operationId: listRoutineSnapshots
+      summary: List immutable routine snapshots newest first
+      responses:
+        '200':
+          description: Snapshot summaries
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/RoutineSnapshotSummary' } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    post:
+      operationId: createRoutineSnapshot
+      summary: Snapshot current exercise prescriptions
+      responses:
+        '201':
+          description: Snapshot created
+          headers:
+            Location: { required: true, schema: { type: string, format: uri-reference } }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RoutineSnapshot' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/v1/routines/{routineId}/snapshots/{snapshotId}:
+    get:
+      operationId: getRoutineSnapshot
+      summary: Read one immutable snapshot
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+        - $ref: '#/components/parameters/RoutineId'
+        - $ref: '#/components/parameters/SnapshotId'
+      responses:
+        '200':
+          description: Snapshot
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RoutineSnapshot' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+components:
+  parameters:
+    UserId:
+      name: X-User-Id
+      in: header
+      required: true
+      description: Trusted user UUID injected by the gateway.
+      schema: { type: string, format: uuid }
+    RoutineId:
+      name: routineId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    SnapshotId:
+      name: snapshotId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+  responses:
+    BadRequest:
+      description: Malformed or invalid request
+      content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
+    Unauthorized:
+      description: Missing trusted user identity
+      content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
+    NotFound:
+      description: User-scoped routine or snapshot not found
+      content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
+    Conflict:
+      description: Request conflicts with persisted constraints
+      content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
+  schemas:
+    RoutineWriteRequest:
+      type: object
+      additionalProperties: false
+      required: [name, days]
+      properties:
+        name: { type: string, minLength: 1 }
+        notes: { type: [string, 'null'] }
+        days:
+          type: array
+          maxItems: 7
+          items: { $ref: '#/components/schemas/RoutineDayWriteRequest' }
+    RoutineDayWriteRequest:
+      type: object
+      additionalProperties: false
+      required: [dayNumber, name, exercises]
+      properties:
+        dayNumber: { type: integer, minimum: 1, maximum: 7 }
+        name: { type: string, minLength: 1 }
+        exercises:
+          type: array
+          items: { $ref: '#/components/schemas/RoutineExerciseWriteRequest' }
+    RoutineExerciseWriteRequest:
+      type: object
+      additionalProperties: false
+      required: [name, sets, reps, weightKg, sortOrder]
+      properties:
+        name: { type: string, minLength: 1 }
+        sets: { type: integer, minimum: 1 }
+        reps: { type: integer, minimum: 1 }
+        weightKg: { type: number, minimum: 0, multipleOf: 0.01, maximum: 999999.99 }
+        sortOrder: { type: integer, minimum: 0 }
+    RoutineSummary:
+      type: object
+      additionalProperties: false
+      required: [id, name, notes, createdAt, updatedAt]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        notes: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    Routine:
+      allOf:
+        - $ref: '#/components/schemas/RoutineSummary'
+        - type: object
+          required: [days]
+          properties:
+            days: { type: array, items: { $ref: '#/components/schemas/RoutineDay' } }
+    RoutineDay:
+      type: object
+      additionalProperties: false
+      required: [id, dayNumber, name, exercises]
+      properties:
+        id: { type: string, format: uuid }
+        dayNumber: { type: integer, minimum: 1, maximum: 7 }
+        name: { type: string }
+        exercises: { type: array, items: { $ref: '#/components/schemas/RoutineExercise' } }
+    RoutineExercise:
+      type: object
+      additionalProperties: false
+      required: [id, name, sets, reps, weightKg, sortOrder, createdAt, updatedAt]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        sets: { type: integer }
+        reps: { type: integer }
+        weightKg: { type: number }
+        sortOrder: { type: integer }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    RoutineSnapshotSummary:
+      type: object
+      additionalProperties: false
+      required: [id, routineId, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        routineId: { type: string, format: uuid }
+        createdAt: { type: string, format: date-time }
+    RoutineSnapshot:
+      allOf:
+        - $ref: '#/components/schemas/RoutineSnapshotSummary'
+        - type: object
+          required: [exercises]
+          properties:
+            exercises: { type: array, items: { $ref: '#/components/schemas/SnapshotExercise' } }
+    SnapshotExercise:
+      type: object
+      additionalProperties: false
+      required: [id, exerciseKey, name, sets, reps, weightKg]
+      properties:
+        id: { type: string, format: uuid }
+        exerciseKey: { type: string }
+        name: { type: string }
+        sets: { type: integer }
+        reps: { type: integer }
+        weightKg: { type: number }
+    Problem:
+      type: object
+      required: [type, title, status, detail, code]
+      properties:
+        type: { type: string, format: uri-reference }
+        title: { type: string }
+        status: { type: integer, minimum: 400, maximum: 599 }
+        detail: { type: string }
+        instance: { type: string, format: uri-reference }
+        code: { type: string }
