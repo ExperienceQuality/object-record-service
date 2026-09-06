@@ -33,13 +33,7 @@ class RoutineBusinessE2ETest {
         Xq.rest().get("/api/v1/routines/" + routineId,
                         RestRequest.builder().headers(headers).build())
                 .should().status(200)
-                .matchJson("""
-                        {
-                        "id":"%s",
-                        "days":[{"dayNumber":1,"name":"Push","exercises":[
-                          {"name":"Bench press","sets":5,"reps":5,"weightKg":100.00,"sortOrder":0}
-                        }]}
-                        """.formatted(routineId));
+                .matchJson("{\"id\":\"%s\",\"days\":[{\"dayNumber\":1,\"name\":\"Push\",\"exercises\":[{\"name\":\"Bench press\",\"sets\":5,\"reps\":5,\"weightKg\":100.00,\"sortOrder\":0}]}]}".formatted(routineId));
     }
 
     @Test
@@ -55,11 +49,7 @@ class RoutineBusinessE2ETest {
                         RestRequest.builder().headers(headers)
                                 .jsonBody(body("Incline press", 80)).build())
                 .should().status(200)
-                .matchJson("""
-                        {"id":"%s","days":[{"exercises":[
-                          {"name":"Incline press","weightKg":80.00}
-                        }]}
-                        """.formatted(routineId));
+                .matchJson("{\"id\":\"%s\",\"days\":[{\"exercises\":[{\"name\":\"Incline press\",\"weightKg\":80.00}]}]}".formatted(routineId));
     }
 
     @Test
