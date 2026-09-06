@@ -41,6 +41,7 @@ dependencies {
     testImplementation 'org.testcontainers:testcontainers-junit-jupiter'
     testImplementation 'org.testcontainers:testcontainers-postgresql'
     testImplementation 'io.swagger.parser.v3:swagger-parser-v3:2.1.45'
+    testImplementation 'org.yaml:snakeyaml'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
     e2eImplementation 'org.junit.jupiter:junit-jupiter-api'
@@ -58,17 +59,37 @@ dependencies {
 }
 
 tasks.named('test') {
-    useJUnitPlatform()
+    useJUnitPlatform {
+        excludeTags 'deployment'
+    }
+}
+
+tasks.register('validateDeployment', Test) {
+    description = 'Validates the Render deployment Blueprint.'
+    group = 'verification'
+    dependsOn tasks.named('testClasses')
+    inputs.file(layout.projectDirectory.file('render.yaml'))
+    inputs.file(layout.projectDirectory.file('src/main/resources/application-prod.yml'))
+    inputs.file(layout.projectDirectory.file('src/main/resources/application-e2e.yml'))
+    inputs.file(layout.projectDirectory.file('src/main/resources/application-integration.yml'))
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform {
+        includeTags 'deployment'
+    }
 }
 
 tasks.named('bootJar') {
     mustRunAfter tasks.named('check')
 }
 
-tasks.register('packageService') {
+tasks.register('packageService', Sync) {
     description = 'Packages the executable routine-service JAR.'
     group = 'build'
     dependsOn tasks.named('bootJar')
+    from tasks.named('bootJar').flatMap { it.archiveFile }
+    into layout.buildDirectory.dir('service')
+    rename { 'routine-service.jar' }
 }
 
 tasks.register('ci') {
@@ -76,6 +97,7 @@ tasks.register('ci') {
     group = 'verification'
     dependsOn tasks.named('check')
     dependsOn tasks.named('packageService')
+    dependsOn tasks.named('validateDeployment')
 }
 
 tasks.register('e2eTest', Test) {

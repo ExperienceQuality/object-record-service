@@ -45,17 +45,13 @@ jobs:
 
       - name: Start packaged service
         env:
+          SPRING_PROFILES_ACTIVE: e2e
           SPRING_DOCKER_COMPOSE_ENABLED: "false"
           SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/routine_service
           SPRING_DATASOURCE_USERNAME: routine_service
           SPRING_DATASOURCE_PASSWORD: ci-test-password
         run: |
-          application_jar=$(find build/libs -maxdepth 1 -type f -name '*.jar' ! -name '*-plain.jar' -print -quit)
-          if [[ -z "$application_jar" ]]; then
-            echo "Executable Spring Boot JAR was not found" >&2
-            exit 1
-          fi
-          java -jar "$application_jar" > build/application.log 2>&1 &
+          java -jar build/service/routine-service.jar > build/application.log 2>&1 &
           echo "$!" > build/application.pid
 
       - name: Wait for service health
@@ -85,7 +81,7 @@ jobs:
           retention-days: 14
           path: |
             build/application.log
-            build/libs/*.jar
+            build/service/routine-service.jar
             build/reports/
             build/test-results/
 

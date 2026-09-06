@@ -39,6 +39,19 @@ SPRING_DATASOURCE_USERNAME=routine_service
 SPRING_DATASOURCE_PASSWORD=replace-me
 ```
 
+The HTTP port defaults to `8080` locally. Hosting platforms can override it with the `PORT` environment variable.
+
+## Configuration profiles
+
+The executable artifact contains four deliberately separated Spring configurations:
+
+- `application.yml` contains shared settings plus local-development datasource defaults and Docker Compose lifecycle management.
+- `application-prod.yml` disables Docker Compose and requires `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, and `SPRING_DATASOURCE_PASSWORD`. It contains no credential fallback values.
+- `application-e2e.yml` disables Docker Compose and provides local-only datasource fallbacks for the packaged-service acceptance environment.
+- `application-integration.yml` disables Docker Compose but defines no datasource. Spring integration tests activate it and let their `@ServiceConnection` Testcontainers instances supply all connection details.
+
+Render sets `SPRING_PROFILES_ACTIVE=prod`. CI starts the packaged service with `SPRING_PROFILES_ACTIVE=e2e`. In-process Spring integration tests use `integration`, never `e2e`. Production credentials remain runtime environment variables and are never packaged in the application image or committed configuration.
+
 ## API
 
 Every domain request requires the trusted `X-User-Id` UUID header.
@@ -64,15 +77,32 @@ docker compose config
 
 See [test coverage](docs/test-coverage.md) for the scenario matrix and known gaps.
 
+## Render deployment
+
+[`render.yaml`](render.yaml) defines a free Render web service in Singapore. It pulls the private, immutable image `ghcr.io/experiencequality/routine-service:0.1.0`, activates the `prod` profile, and connects to an existing Neon PostgreSQL 18 database; it does not provision a Render database.
+
+Before creating the Blueprint:
+
+1. Publish `v0.1.0` and verify that GHCR contains the `0.1.0` image.
+2. In Render, create a private registry credential named `xq-ghcr` using a GitHub token with `read:packages` access.
+3. Confirm the Neon project is in Singapore, uses PostgreSQL 18, and is empty or already managed by this service's Flyway history.
+4. Select `render.yaml` when creating the Render Blueprint.
+5. Enter the prompted `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, and `SPRING_DATASOURCE_PASSWORD` values. Use Neon's direct Java/JDBC connection URL with TLS rather than the pooled endpoint, because Flyway runs during application startup.
+6. Wait for `/actuator/health` to pass, then exercise a create/read routine smoke test with `X-User-Id`.
+
+The Render and Neon free tiers have a base cost of $0 while usage remains inside their allowances. Render spins the service down after 15 minutes without inbound traffic and documents a wake-up time of about one minute. Neon also scales idle compute to zero, so clients should allow up to 90 seconds for the first request after inactivity. These free tiers are intended for evaluation, not availability-sensitive production use.
+
+Future releases are manual: publish a new semantic image tag, update the pinned image in `render.yaml`, run `./gradlew validateDeployment`, and sync the Blueprint. Do not deploy `latest`; the pinned tag keeps promotion and rollback explicit.
+
 ## CI/CD
 
-[CI](.github/workflows/ci.yml) runs for pull requests, pushes to `main`, manual dispatches, and release workflow calls. It validates the Gradle wrapper, invokes the Gradle `ci` task for unit/integration/OpenAPI verification and `packageService` JAR creation, starts PostgreSQL 18 and the packaged service, then invokes the Gradle `e2e` task. Reports, logs, and the JAR are retained as workflow artifacts.
+[CI](.github/workflows/ci.yml) runs for pull requests, pushes to `main`, manual dispatches, and release workflow calls. It validates the Gradle wrapper, invokes the Gradle `ci` task for unit/integration/OpenAPI verification and `packageService` creation of the stable `build/service/routine-service.jar` artifact, starts PostgreSQL 18 and that exact packaged service, then invokes the Gradle `e2e` task. Reports, logs, and the packaged JAR are retained as workflow artifacts.
 
 [Release](.github/workflows/release.yml) runs for `v*` tags or manual dispatch. After the same CI gate passes, it publishes `ghcr.io/experiencequality/routine-service` with release and commit-SHA tags. Stable semantic versions also update `latest`. The workflow generates an SPDX SBOM and publishes provenance and SBOM attestations for the image.
 
 Example release:
 
 ```shell
-git tag v1.0.0
-git push origin v1.0.0
+git tag v0.1.0
+git push origin v0.1.0
 ```

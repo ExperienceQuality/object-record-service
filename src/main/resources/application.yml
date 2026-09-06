@@ -2,9 +2,9 @@ spring:
   application:
     name: routine-service
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/routine_service}
-    username: ${SPRING_DATASOURCE_USERNAME:routine_service}
-    password: ${SPRING_DATASOURCE_PASSWORD:${POSTGRES_PASSWORD:routine_service_pw}}
+    url: jdbc:postgresql://localhost:5432/routine_service
+    username: routine_service
+    password: ${POSTGRES_PASSWORD:routine_service_pw}
   docker:
     compose:
       file: compose.yaml
@@ -17,6 +17,9 @@ spring:
   jackson:
     deserialization:
       fail-on-unknown-properties: true
+
+server:
+  port: ${PORT:8080}
 
 management:
   endpoints:
