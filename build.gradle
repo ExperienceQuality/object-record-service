@@ -1,0 +1,95 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '4.1.1'
+    id 'io.spring.dependency-management' version '1.1.7'
+}
+
+group = 'com.xq'
+version = '0.0.1-SNAPSHOT'
+description = 'Routine service'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+sourceSets {
+    e2e {
+        java.srcDir 'src/e2e/java'
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'org.springframework.boot:spring-boot-starter-flyway'
+    implementation 'org.springframework.boot:spring-boot-starter-jdbc'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.flywaydb:flyway-database-postgresql'
+
+    runtimeOnly 'org.postgresql:postgresql'
+
+    developmentOnly 'org.springframework.boot:spring-boot-docker-compose'
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.boot:spring-boot-testcontainers'
+    testImplementation 'org.testcontainers:testcontainers-junit-jupiter'
+    testImplementation 'org.testcontainers:testcontainers-postgresql'
+    testImplementation 'io.swagger.parser.v3:swagger-parser-v3:2.1.45'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+    e2eImplementation 'org.junit.jupiter:junit-jupiter-api'
+    e2eImplementation 'org.assertj:assertj-core'
+    e2eImplementation 'io.rest-assured:rest-assured:5.5.6'
+    e2eImplementation 'com.fasterxml.jackson.core:jackson-databind:2.21.5'
+    e2eImplementation 'net.javacrumbs.json-unit:json-unit-assertj:4.1.0'
+    e2eImplementation 'org.json:json:20250517'
+    e2eImplementation 'org.slf4j:slf4j-api'
+    e2eImplementation 'org.apache.groovy:groovy:4.0.22'
+    e2eImplementation 'org.apache.groovy:groovy-json:4.0.22'
+    e2eImplementation 'org.apache.groovy:groovy-xml:4.0.22'
+    e2eRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine'
+    e2eRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
+
+tasks.named('bootJar') {
+    mustRunAfter tasks.named('check')
+}
+
+tasks.register('packageService') {
+    description = 'Packages the executable routine-service JAR.'
+    group = 'build'
+    dependsOn tasks.named('bootJar')
+}
+
+tasks.register('ci') {
+    description = 'Runs CI verification and packages the service.'
+    group = 'verification'
+    dependsOn tasks.named('check')
+    dependsOn tasks.named('packageService')
+}
+
+tasks.register('e2eTest', Test) {
+    description = 'Runs end-to-end tests.'
+    group = 'verification'
+    dependsOn tasks.named('e2eClasses')
+    testClassesDirs = sourceSets.e2e.output.classesDirs
+    classpath = sourceSets.e2e.runtimeClasspath
+    useJUnitPlatform()
+    outputs.upToDateWhen { false }
+}
+
+tasks.register('e2e') {
+    description = 'Runs the end-to-end acceptance suite against XQORB_BASE_URI.'
+    group = 'verification'
+    dependsOn tasks.named('e2eTest')
+}
