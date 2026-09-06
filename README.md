@@ -66,7 +66,7 @@ See [test coverage](docs/test-coverage.md) for the scenario matrix and known gap
 
 ## CI/CD
 
-[CI](.github/workflows/ci.yml) runs for pull requests, pushes to `main`, manual dispatches, and release workflow calls. It validates the Gradle wrapper, invokes the Gradle `ci` task for clean unit/integration/OpenAPI verification and `packageService` JAR creation, starts PostgreSQL 18 and the packaged service, then invokes the Gradle `e2e` task. Reports, logs, and the JAR are retained as workflow artifacts.
+[CI](.github/workflows/ci.yml) runs for pull requests, pushes to `main`, manual dispatches, and release workflow calls. It validates the Gradle wrapper, invokes the Gradle `ci` task for unit/integration/OpenAPI verification and `packageService` JAR creation, starts PostgreSQL 18 and the packaged service, then invokes the Gradle `e2e` task. Reports, logs, and the JAR are retained as workflow artifacts.
 
 [Release](.github/workflows/release.yml) runs for `v*` tags or manual dispatch. After the same CI gate passes, it publishes `ghcr.io/experiencequality/routine-service` with release and commit-SHA tags. Stable semantic versions also update `latest`. The workflow generates an SPDX SBOM and publishes provenance and SBOM attestations for the image.
 

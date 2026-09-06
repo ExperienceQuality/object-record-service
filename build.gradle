@@ -59,11 +59,10 @@ dependencies {
 
 tasks.named('test') {
     useJUnitPlatform()
-    mustRunAfter tasks.named('clean')
 }
 
 tasks.named('bootJar') {
-    mustRunAfter tasks.named('test')
+    mustRunAfter tasks.named('check')
 }
 
 tasks.register('packageService') {
@@ -73,10 +72,9 @@ tasks.register('packageService') {
 }
 
 tasks.register('ci') {
-    description = 'Runs clean CI verification and packages the service.'
+    description = 'Runs CI verification and packages the service.'
     group = 'verification'
-    dependsOn tasks.named('clean')
-    dependsOn tasks.named('test')
+    dependsOn tasks.named('check')
     dependsOn tasks.named('packageService')
 }
 
